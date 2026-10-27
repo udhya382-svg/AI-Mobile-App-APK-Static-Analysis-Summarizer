@@ -1,0 +1,246 @@
+{
+  "name": "AI Mobile App (APK) Static Analysis Summarizer",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Mobile Application Security Assessment",
+        "formDescription": "Red Team - AI VAPT. Submit raw Android static analysis output (MobSF, JADX, apktool). A formal security assessment report will be emailed to you.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "App Name",
+              "placeholder": "com.example.app",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Analysis Tool",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "MobSF"
+                  },
+                  {
+                    "option": "JADX"
+                  },
+                  {
+                    "option": "apktool"
+                  },
+                  {
+                    "option": "Other / Mixed"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Raw Findings",
+              "fieldType": "textarea",
+              "placeholder": "Paste raw static analysis output here",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Report Email",
+              "fieldType": "email",
+              "placeholder": "you@company.com",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "path": "apk-static-analysis",
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Submission received. Your security assessment report will be delivered by email shortly."
+            }
+          }
+        }
+      },
+      "id": "d6036bfc-ff9a-4048-8462-c31631010ae6",
+      "name": "APK Findings Input Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        112
+      ],
+      "webhookId": "0bba10be-2a7a-4fa9-9b1b-cf93be3a0271"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "appName",
+              "name": "app_name",
+              "value": "={{ $json[\"App Name\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "toolName",
+              "name": "tool",
+              "value": "={{ $json[\"Analysis Tool\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "rawFindings",
+              "name": "raw_findings",
+              "value": "={{ $json[\"Raw Findings\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "reportEmail",
+              "name": "report_email",
+              "value": "={{ $json[\"Report Email\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c05ac534-8bef-42eb-9f01-deb3d10a822c",
+      "name": "Prepare Findings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=App: {{ $json.app_name }}\nSource tool: {{ $json.tool }}\n\nRAW STATIC ANALYSIS OUTPUT:\n{{ $json.raw_findings }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a principal mobile application security consultant producing a formal Android APK static analysis assessment for a Red Team (AI VAPT) engagement. You receive raw static analysis output (MobSF, JADX, apktool, AndroidManifest.xml, etc.). Filter out noise and assess ONLY these three areas:\n\n1. PERMISSIONS & COMPONENT EXPOSURE - dangerous or excessive permissions, exported activities/services/receivers/providers without protection.\n2. HARDCODED SECRETS - API keys, tokens, passwords, private keys, Firebase URLs, cloud keys, crypto keys, internal endpoints.\n3. INSECURE STORAGE & CONFIGURATION - allowBackup, debuggable, usesCleartextTraffic, world-readable files, plaintext SharedPreferences, external storage, missing network security config.\n\nRules:\n- Never invent findings not supported by the input. If an area has no findings, state \"No issues identified in the supplied output.\"\n- Mask every secret: show only the first 4 characters followed by ****.\n- For each finding give: ID (F-01, F-02...), title, severity (Critical/High/Medium/Low), OWASP MASVS v2 category (e.g. MASVS-STORAGE-1, MASVS-PLATFORM-1, MASVS-CRYPTO-2, MASVS-NETWORK-1, MASVS-RESILIENCE-2), CWE ID, affected component/evidence, business impact, and remediation.\n- Tone: formal, concise, objective, consultant-grade.\n\nOUTPUT FORMAT: Return ONLY an HTML fragment (no markdown, no code fences, no <html>/<head>/<body> tags). Use inline CSS only. Use exactly this structure:\n\n<h2 style=\"font-family:Arial;color:#1f2937;border-bottom:2px solid #1e3a8a;padding-bottom:6px\">1. Executive Summary</h2>\n<p style=\"font-family:Arial;font-size:14px;color:#374151;line-height:1.5\">3-5 sentence summary for management: overall posture, most serious exposure, business impact.</p>\n<table style=\"border-collapse:collapse;font-family:Arial;font-size:14px;margin:10px 0\"><tr>\n cells for Overall Risk and counts. Overall risk cell background: Critical #b91c1c, High #ea580c, Medium #ca8a04, Low #15803d, white bold text. Count cells: padding 8px 14px, border 1px solid #d1d5db.\n</tr></table>\n<h2 ...same h2 style>2. Findings Overview</h2>\n<table style=\"border-collapse:collapse;width:100%;font-family:Arial;font-size:13px\">header row background #1e3a8a white text with columns: ID | Finding | Severity | MASVS | CWE. One row per finding, cells padding 6px border 1px solid #d1d5db, severity cell colored with the colors above and white text.</table>\n<h2 ...>3. Detailed Findings</h2>\nFor each of the three areas a <h3 style=\"font-family:Arial;color:#1e3a8a\"> heading, then for each finding a <div style=\"border-left:4px solid SEVERITYCOLOR;background:#f9fafb;padding:10px 14px;margin:10px 0;font-family:Arial;font-size:13px;color:#374151\"> containing bold \"F-0X: Title\", then lines for Severity, MASVS, CWE, Evidence, Impact, Remediation (labels in bold).\n<h2 ...>4. Prioritised Remediation Plan</h2>\n<ol style=\"font-family:Arial;font-size:13px;color:#374151\"> 3-6 actions ordered by priority, each tagged Immediate / Short-term / Long-term.</ol>"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "648c3420-8e35-4a2b-810f-9cd7317b50fa",
+      "name": "AI Risk Analysis",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5.4-mini",
+          "cachedResultName": "gpt-5.4-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "2fae2bcc-5ec4-41fb-abba-14f86f05c843",
+      "name": "OpenAI Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        528,
+        336
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "Gateway credits",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $(\"Prepare Findings\").item.json.report_email }}",
+        "subject": "=[Confidential] Mobile App Security Assessment - {{ $(\"Prepare Findings\").item.json.app_name }}",
+        "message": "=<div style=\"max-width:820px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb\">\n<div style=\"background:#1e3a8a;color:#ffffff;padding:20px 24px;font-family:Arial\">\n<div style=\"font-size:12px;letter-spacing:2px;opacity:.85\">RED TEAM - AI VAPT | CONFIDENTIAL</div>\n<div style=\"font-size:22px;font-weight:bold;margin-top:4px\">Mobile Application Static Security Assessment</div>\n</div>\n<table style=\"width:100%;border-collapse:collapse;font-family:Arial;font-size:13px;color:#374151;background:#f3f4f6\">\n<tr><td style=\"padding:8px 24px\"><b>Application:</b> {{ $('Prepare Findings').item.json.app_name }}</td><td style=\"padding:8px 24px\"><b>Analysis Source:</b> {{ $('Prepare Findings').item.json.tool }}</td></tr>\n<tr><td style=\"padding:8px 24px\"><b>Report ID:</b> APK-{{ $now.toFormat('yyyyMMdd') }}-{{ $execution.id }}</td><td style=\"padding:8px 24px\"><b>Date:</b> {{ $now.setZone('Asia/Kolkata').toFormat('dd LLL yyyy, HH:mm') }} IST</td></tr>\n</table>\n<div style=\"padding:8px 24px 20px\">{{ $json.text.replace(/```html|```/g, '').trim() }}</div>\n<div style=\"background:#f3f4f6;color:#6b7280;font-family:Arial;font-size:11px;padding:12px 24px;border-top:1px solid #e5e7eb\">This report was generated by automated AI-assisted static analysis and must be validated by a security analyst before remediation sign-off. Secrets are partially masked. Classification: Confidential.</div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "d993fcbe-f301-45ea-9f3f-e5e16cecd236",
+      "name": "Email Risk Summary",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        112
+      ],
+      "webhookId": "dd04ca7f-029a-47ac-bb8d-0c001717ad8a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "TypyPBdCr9gRCAeu",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "APK Findings Input Form": {
+      "main": [
+        [
+          {
+            "node": "Prepare Findings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Findings": {
+      "main": [
+        [
+          {
+            "node": "AI Risk Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Risk Analysis": {
+      "main": [
+        [
+          {
+            "node": "Email Risk Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Risk Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "ec7d92e0-033f-46a5-89bf-d45a5f96eae2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c70bd069cd043c4a3e7324d11337a0d6718f6d63966964b1d186f587456bb1a3"
+  },
+  "nodeGroups": [],
+  "id": "pYnfHpbPWc40gfcx",
+  "tags": []
+}
